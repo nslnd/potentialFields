@@ -1,0 +1,74 @@
+function T = Torque(Q, QF, obstacles, zeta)
+Fr1_q = [0;0;0];
+Fr2_q = [0;0;0];
+Fr3_q = [0;0;0];
+%inputting the forward kinematics matrices
+[A1_Qs, A2_Qs, A3_Qs] = fkin(Q);
+[A1_Qf, A2_Qf, A3_Qf] = fkin(QF);
+[J1,J2,J3] = JacobRPR(A1_Qs, A2_Qs, A3_Qs);
+d=15; %transition constant
+n=1; %repulsive force constant
+threshold=100; %range of repulsive force
+%end effector at the ending position
+qf1 = [A1_Qf(1,4); A1_Qf(2,4); A1_Qf(3,4)];
+qf2 = [A2_Qf(1,4); A2_Qf(2,4); A2_Qf(3,4)];
+qf3 = [A3_Qf(1,4); A3_Qf(2,4); A3_Qf(3,4)];
+%end effector at the starting position
+q1 = [A1_Qs(1,4); A1_Qs(2,4); A1_Qs(3,4)];
+q2 = [A2_Qs(1,4); A2_Qs(2,4); A2_Qs(3,4)];
+q3 = [A3_Qs(1,4); A3_Qs(2,4); A3_Qs(3,4)];
+d2 = norm(q2-QF);
+d3 = norm(q3-QF);
+%calculate the repulsive forces that are on each joint that are a result of
+%the three obstacles
+%the repulsive forces only matter once they are within a threshold, that is
+%po in this case
+for i = 1:3
+ dist1(i) = norm(q1-obstacles(1:3,i))-obstacles(4,i);
+
+ dist2(i) = norm(q2-obstacles(1:3,i))-obstacles(4,i);
+
+ dist3(i) = norm(q3-obstacles(1:3,i))-obstacles(4,i);
+end
+Fa1_q = -zeta*(q1 - qf1);
+if d3 <= d
+ Fa3_q = -zeta*(q3 - qf3);
+else
+ Fa3_q = -d*zeta*(q3 - qf3)/norm(q3 - qf3);
+end
+% find the gradient from each joint with respect to each one of the
+% obstacles
+for i = 1:3
+ V1(:,i) = (q1 -obstacles(1:3,i))/dist1(i);
+
+ V2(:,i) = (q2 - obstacles(1:3,i))/dist2(i);
+
+ V3(:,i) = (q3 - obstacles(1:3,i))/dist3(i);
+end
+% calculating the repulsive forces that the obstacles create on each joint
+for i = 1:3
+ if dist1(i) < threshold
+ Fr1_q = Fr1_q + n*(1/dist1(i)-1/threshold)*1/(dist1(i))^2*V1(:,i);
+ end
+ if dist2(i) < threshold
+ Fr2_q = Fr2_q + n*(1/dist2(i)-1/threshold)*1/(dist2(i))^2 * V2(:,i);
+ end
+ if dist3(i) < threshold
+ Fr3_q = Fr3_q + n*(1/dist3(i)-1/threshold)*1/(dist3(i))^2 * V3(:,i);
+ end
+end
+Tr1 = transpose(J1)*Fr1_q;
+Tr2 = transpose(J2)*Fr2_q;
+Tr3 = transpose(J3)*Fr3_q;
+if d2 <= d
+ Fa2_q = -zeta*(q2 - qf2);
+else
+ Fa2_q = -d*zeta*(q2 - qf2)/norm(q2 - qf2);
+end
+Ta1 = transpose(J1)*Fa1_q;
+Ta2 = transpose(J2)*Fa2_q;
+Ta3 = transpose(J3)*Fa3_q;
+T(1) = Ta1(1,1) + Ta2(1,1) + Ta3(1,1) + Tr1(1,1) + Tr2(1,1) + Tr3(1,1);
+T(2) = Ta1(2,1) + Ta2(2,1) + Ta3(2,1) + Tr1(2,1) + Tr2(2,1) + Tr3(2,1);
+T(3) = Ta1(3,1) + Ta2(3,1) + Ta3(3,1) + Tr1(3,1) + Tr2(3,1) + Tr3(3,1);
+end
