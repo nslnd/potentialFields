@@ -1,4 +1,5 @@
 function [C,P] =
+		%UPDATE remember quiver plot
 		Path(firstC,lastC,error,Avoid,stepSz)
 		Z=10;
 		config(1,:) = firstC;
@@ -10,9 +11,7 @@ function [C,P] =
 		
 		 Tor = Torque(C(j,:),endC, Avoid,Z);
 		
-
 		
-
 		 C(j+1,:) = C(j,:) + stepSz * Tor/norm(Tor);
 		 [-,-,Number3] = fkin(C(j+1,:));
 		
